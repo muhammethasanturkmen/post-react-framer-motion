@@ -399,7 +399,7 @@ function PostList({ setPostId }) {
             <h3 key={x.id}> <a
               href={'#/posts/' + x.id}
               onClick={e => { e.preventDefault(); setPostId(x.id); }}
-            >{x.title}</a>{x.Content}</h3>
+            >{x.title}</a></h3>
           )}
         </div>
         <div className={styles.addposts}>
