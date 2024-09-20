@@ -334,7 +334,7 @@ function Contact() {
         transition={{ type: "tween", ease: "backOut", duration: 0.5 }}
       >
         <p onMouseEnter={() => { setIsHovered(true) }} onMouseLeave={() => { setIsHovered(false) }}>
-          Follow us on social media to stay updated and be part of our community.
+        Follow us on social media to stay updated and be part of our community.
         </p>
       </motion.div>
 
@@ -359,162 +359,122 @@ function Posts() {
 
 function PostList({ setPostId }) {
   const [posts, setPosts] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newPost, setNewPost] = useState({});
 
   useEffect(() => {
-    async function dataget() {
-      const response = await fetch('http://localhost:3000/api/posts');
-      const posts = await response.json();
-      setPosts(posts);
-    }
-    dataget();
-  }, [newPost]);
-
-  const handleNewPostForm = async (e) => {
-    e.preventDefault();
-    const formObj = Object.fromEntries(new FormData(e.target));
-    console.log(formObj);
-    const response = await fetch("http://localhost:3000/api/posts", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json"
-      },
-      body: JSON.stringify(formObj)
-    });
-    if (!response.ok) {
-      return;
-    }
-    const data = await response.json();
-    console.log(data);
-    setNewPost(data);
-    e.target.reset();
-  }
+    fetch('https://dummyjson.com/posts')
+      .then(r => r.json())
+      .then(r => {
+        setPosts(r.posts);
+      });
+  }, []);
 
   return (
     <>
-      <div className={styles.posts}>
-        <div className={styles.listposts}>
-          {posts.map(x =>
-            <h3 key={x.id}> <a
-              href={'#/posts/' + x.id}
-              onClick={e => { e.preventDefault(); setPostId(x.id); }}
-            >{x.title}</a>{x.Content}</h3>
-          )}
-        </div>
-        <div className={styles.addposts}>
-          <h2>New Post</h2>
-            <form onSubmit={handleNewPostForm}>
-              <input className={styles.title} type="text" name="title" placeholder="title" /> <br />
-              <textarea className={styles.textarea} name="content" id="" placeholder="content"></textarea> <br />
-              <button className={styles.add}>Add</button>
-            </form>
-        </div>
-      </div>
+      {posts.map(x =>
+        <h3 key={x.id}> <a
+          href={'#/posts/' + x.id}
+          onClick={e => { e.preventDefault(); setPostId(x.id); }}
+        >{x.title}</a></h3>
+      )}
     </>
   )
 }
 
 
-
 function PostDetail({ postId, setPostId }) {
-  const [data, setData] = useState([]);
-  const [refresh, setRefresh] = useState(false);
-  const [error, setError] = useState(null);
-  const formRef = useRef(null);
+  const [post, setPost] = useState({});
+  const [comments, setComments] = useState([]);
+  const [savedComments, setSavedComments] = useState(localStorage.savedComments ? JSON.parse(localStorage.savedComments) : []);
 
+  async function getData() {
+    const postData = await fetch(`http:localhost:3000/api/comments`).then(r => r.json());
+    const commentsData = await fetch(`https://dummyjson.com/posts/${postId}/comments`).then(r => r.json());
 
+    setPost(postData);
+    setComments(commentsData.comments);
+  }
 
   useEffect(() => {
-    async function getData() {
-      const response = await fetch(`http://localhost:3000/api/posts/${postId}`);
-      const data = await response.json();
-      setData(data);
-    }
+    localStorage.savedComments = JSON.stringify(savedComments);
+  }, [savedComments]);
+
+  useEffect(() => {
     getData();
-  }, [refresh]);
-
-  const handleAddNewCommentForm = async (e) => {
-    e.preventDefault();
-    const formObj = Object.fromEntries(new FormData(e.target));
-    console.log(formObj);
-
-    const newComment = {
-      ...formObj,
-      postId: postId
-    }
-
-
-    try {
-      const response = await fetch("http://localhost:3000/api/comments", {
-        method: "POST",
-        headers: {
-          "Content-type": "application/json"
-        },
-        body: JSON.stringify(newComment)
-      })
-      if (response.ok) {
-        setRefresh(!refresh);
-        formRef.current.reset();
-      }
-    } catch (e) {
-      console.log(e);
-      setError("bir hata oluştu");
-    }
-
-  }
-
-
-
-  const handleLikeBtn = async (e) => {
-    e.preventDefault();
-    const commentId = e.target.value;
-    const response = await fetch(`http://localhost:3000/api/comments/${commentId}?like=true`);
-    if (!response.ok) {
-      return;
-    }
-    setRefresh(!refresh);
-  }
-
-  const handleDisLikeBtn = async (e) => {
-    e.preventDefault();
-    const commentId = e.target.value;
-    const response = await fetch(`http://localhost:3000/api/comments/${commentId}?dislike=false`);
-    if (!response.ok) {
-      return;
-    }
-    setRefresh(!refresh);
-  }
+  }, []);
 
   function handleClick(e) {
     e.preventDefault();
     setPostId(null);
   }
 
+  function handAddComment(e) {
+    e.preventDefault();
+    let formData = new FormData(e.target);
+    let formObj = Object.fromEntries(formData);
+    console.log(formObj);
+    const newComment = {
+      id: crypto.randomUUID(),
+      body: formObj.body,
+      postId,
+      user: {
+        id: crypto.randomUUID(),
+        fullName: formObj.fullName,
+      },
+    };
+    setSavedComments([...savedComments, newComment]);
+    e.target.reset();
+  }
+
+  const postComments = savedComments.filter((x) => x.postId === postId);
+  const totalComments = [...postComments, ...comments];
+
   return (
-    <div className={styles.comments}>
-        <p><a href="#" className={styles.back} onClick={handleClick}>Back</a></p>
-      <div className={styles.icerik}>
-          <div className={styles.gonderi}>
-            <h1>{data.title}</h1>
-            <p>{data.content}</p>
-          </div>
-        <form ref={formRef} onSubmit={handleAddNewCommentForm}>
-          <h2>Comment</h2>
-          <textarea className={styles.textarea} name="content" id="" placeholder="Comment"></textarea> <br />
-          <button className={styles.add}>post a comment</button>
-        </form>
-      </div>
-      {data.comments?.reverse().map((comment, i) => (
-        <div className={styles.comment} key={i}>
-          <p>{comment.content}</p>
-          <div className={styles.reaction}>
-            <button onClick={handleLikeBtn} value={comment.id}><img src="./hover-like.gif" alt="like" /> {comment.likes}</button>
-            <button onClick={handleDisLikeBtn} value={comment.id}><img src="./hover-dislike.gif" alt="dislike" /> {comment.dislikes}</button>
-          </div>
-        </div>
-      ))}
-    </div>
+    <>
+      <p><a href="#" className={styles.back} onClick={handleClick}>Back</a></p>
+      <h3>{post.title}</h3>
+      <p>{post.body}</p>
+      <hr />
+
+      {totalComments.slice().reverse().map(
+        (x, index) => (
+          <p key={index}><strong>{x.user.fullName}</strong> says: {x.body}</p>
+        )
+      )}
+
+
+      <form id="addComment" onSubmit={handAddComment}>
+        <motion.div
+          className={styles.inputContainer}
+          whileHover={{ scale: 1.02 }} // Hover sırasında input alanı biraz büyüyecek
+          transition={{ type: "spring", stiffness: 300 }} // Yumuşak bir animasyon
+        >
+          <motion.input
+            className={styles.customInput} name='fullName' placeholder='name'
+            whileFocus={{ scale: 1.02 }} // Focus sırasında input alanı biraz büyüyecek
+          />
+        </motion.div>
+        <motion.div
+          className={styles.inputContainer} 
+          whileHover={{ scale: 1.02 }} // Hover sırasında input alanı biraz büyüyecek
+          transition={{ type: "spring", stiffness: 300 }} // Yumuşak bir animasyon
+        >
+          <motion.textarea
+            className={styles.customInput} name='body' placeholder='comment'
+            whileFocus={{ scale: 1.02 }} // Focus sırasında input alanı biraz büyüyecek
+          />
+        </motion.div>
+        <motion.button
+          className={styles.customButton}
+          whileHover={{ scale: 1.1 }} // Hover sırasında buton büyüyecek
+          whileTap={{ scale: 0.95 }}  // Tıklama sırasında buton küçülecek
+          transition={{ type: "spring", stiffness: 300 }} // Yumuşak bir animasyon
+        >
+          Add
+        </motion.button>
+      </form>
+
+
+    </>
   )
 }
 
